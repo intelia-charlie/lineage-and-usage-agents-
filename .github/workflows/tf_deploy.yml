@@ -192,5 +192,5 @@ jobs:
       - name: Print service URLs
         working-directory: terraform
         run: |
-          echo "Backend:  $(terraform output -raw backend_url)"
-          echo "Frontend: $(terraform output -raw frontend_url)"
+          echo "Backend:  $(terraform output -raw backend_url 2>/dev/null || echo 'not yet deployed')"
+          echo "Frontend: $(terraform output -raw frontend_url 2>/dev/null || echo 'not yet deployed')"
