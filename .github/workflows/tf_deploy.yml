@@ -57,7 +57,7 @@ jobs:
             -f backend/Dockerfile \
             -t ${{ steps.auth.outputs.registry }}/backend:${{ env.IMAGE_TAG }} \
             -t ${{ steps.auth.outputs.registry }}/backend:latest \
-            backend/
+            .
           docker push ${{ steps.auth.outputs.registry }}/backend:${{ env.IMAGE_TAG }}
           docker push ${{ steps.auth.outputs.registry }}/backend:latest
 
