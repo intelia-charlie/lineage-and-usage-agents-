@@ -1,0 +1,42 @@
+name: GCP Auth
+description: Derive standard GCP resource names and authenticate via Workload Identity Federation.
+
+# Required env vars on the calling job (set from vars.*):
+#   PROJECT_ID, PROJECT_NUMBER, REGION
+
+inputs:
+  env:
+    description: 'Target environment (dev, sit, prod)'
+    required: true
+
+outputs:
+  sa_email:
+    description: 'Terraform bootstrap service account email'
+    value: ${{ steps.names.outputs.sa_email }}
+  wif_provider:
+    description: 'Workload Identity Federation provider resource path'
+    value: ${{ steps.names.outputs.wif_provider }}
+  registry:
+    description: 'Artifact Registry base URL for this environment'
+    value: ${{ steps.names.outputs.registry }}
+  state_bucket:
+    description: 'Terraform state bucket for this environment'
+    value: ${{ steps.names.outputs.state_bucket }}
+
+runs:
+  using: composite
+  steps:
+    - name: Derive resource names
+      id: names
+      shell: bash
+      run: |
+        echo "sa_email=data-tf-sa-${{ inputs.env }}@${PROJECT_ID}.iam.gserviceaccount.com" >> "$GITHUB_OUTPUT"
+        echo "wif_provider=projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool-${{ inputs.env }}/providers/github-provider-${{ inputs.env }}" >> "$GITHUB_OUTPUT"
+        echo "registry=${REGION}-docker.pkg.dev/${PROJECT_ID}/lineage-agents-${{ inputs.env }}" >> "$GITHUB_OUTPUT"
+        echo "state_bucket=${PROJECT_ID}-gcs-tfstate-${{ inputs.env }}" >> "$GITHUB_OUTPUT"
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ steps.names.outputs.wif_provider }}
+        service_account: ${{ steps.names.outputs.sa_email }}

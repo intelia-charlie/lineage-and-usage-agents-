@@ -1,0 +1,73 @@
+name: Full Deploy
+
+# Infra + smoke test. Calls tf_deploy.yml then hits the backend health endpoint.
+# PAIRED with tf_deploy.yml — any Terraform variable added there MUST be reflected
+# in the infra path here (conventions rule 7).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options: [dev, sit, prod]
+
+jobs:
+  infra:
+    name: Infra
+    uses: ./.github/workflows/tf_deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+
+  smoke-test:
+    name: Smoke test
+    needs: infra
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENV: ${{ inputs.environment }}
+      PROJECT_ID: ${{ vars.PROJECT_ID }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+      REGION: ${{ vars.REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: ./.github/actions/gcp-auth
+        with:
+          env: ${{ env.ENV }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${PROJECT_ID}-gcs-tfstate-${ENV}" \
+            -backend-config="prefix=terraform/lineage-agents-state"
+
+      - name: Get backend URL
+        id: urls
+        working-directory: terraform
+        run: |
+          echo "backend=$(terraform output -raw backend_url)" >> "$GITHUB_OUTPUT"
+          echo "frontend=$(terraform output -raw frontend_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Backend health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.urls.outputs.backend }}/healthz")
+          if [[ "$STATUS" != "200" ]]; then
+            echo "Backend health check failed (HTTP $STATUS)" >&2
+            exit 1
+          fi
+          echo "Backend healthy (HTTP $STATUS)"
+
+      - name: Print URLs
+        run: |
+          echo "Backend:  ${{ steps.urls.outputs.backend }}"
+          echo "Frontend: ${{ steps.urls.outputs.frontend }}"
