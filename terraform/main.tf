@@ -11,13 +11,14 @@ module "project_setup" {
 }
 
 module "backend" {
-  source          = "./modules/backend"
-  project_id      = var.project_id
-  region          = var.region
-  env             = var.env
-  registry_url    = local.registry_url
-  image_tag       = var.image_tag
-  results_bucket  = module.project_setup.results_bucket_name
+  source         = "./modules/backend"
+  project_id     = var.project_id
+  region         = var.region
+  env            = var.env
+  registry_url   = local.registry_url
+  image_tag      = var.image_tag
+  results_bucket = module.project_setup.results_bucket_name
+  frontend_url   = var.frontend_url
 
   depends_on = [module.project_setup]
 }

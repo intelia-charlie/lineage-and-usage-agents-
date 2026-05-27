@@ -70,7 +70,8 @@ jobs:
             -var="region=${{ vars.REGION }}" \
             -var="env=${{ env.ENV }}" \
             -var="image_tag=${{ env.IMAGE_TAG }}" \
-            -var="backend_url=${{ vars.BACKEND_URL }}"
+            -var="backend_url=${{ vars.BACKEND_URL }}" \
+            -var="frontend_url=${{ vars.FRONTEND_URL }}"
 
   build-backend:
     name: Build backend
@@ -187,7 +188,8 @@ jobs:
             -var="region=${{ vars.REGION }}" \
             -var="env=${{ env.ENV }}" \
             -var="image_tag=${{ env.IMAGE_TAG }}" \
-            -var="backend_url=${{ vars.BACKEND_URL }}"
+            -var="backend_url=${{ vars.BACKEND_URL }}" \
+            -var="frontend_url=${{ vars.FRONTEND_URL }}"
 
       - name: Print service URLs
         working-directory: terraform

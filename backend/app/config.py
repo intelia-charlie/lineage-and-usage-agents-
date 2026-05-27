@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     usage_model: str = Field(default="gemini-2.5-flash")
     summary_model: str = Field(default="gemini-2.5-pro")
 
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:3001"])
     log_level: str = Field(default="INFO")
 
     # Demo-only defaults — pre-filled so users don't fumble with creds in the UI.

@@ -41,3 +41,9 @@ variable "backend_url" {
   description = "Cloud Run URL of the backend service, passed as NEXT_PUBLIC_API_BASE to the frontend image build. Set as a GitHub Environment var (BACKEND_URL) after first backend deploy."
   default     = ""
 }
+
+variable "frontend_url" {
+  type        = string
+  description = "Cloud Run URL of the frontend service, added to backend CORS allowed origins. Set as a GitHub Environment var (FRONTEND_URL) after first frontend deploy."
+  default     = ""
+}

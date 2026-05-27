@@ -5,6 +5,12 @@ variable "registry_url" { type = string }
 variable "image_tag" { type = string }
 variable "results_bucket" { type = string }
 
+variable "frontend_url" {
+  type        = string
+  description = "Frontend Cloud Run URL, added to CORS allowed origins."
+  default     = ""
+}
+
 variable "secret_ids" {
   type        = list(string)
   description = "Secret Manager secret IDs this service reads. Created out-of-band; Terraform only grants access."
@@ -79,6 +85,10 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      env {
+        name  = "APP_CORS_ORIGINS"
+        value = "http://localhost:3000,http://localhost:3001,${var.frontend_url}"
+      }
       env {
         name  = "APP_GCP_PROJECT"
         value = var.project_id
