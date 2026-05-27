@@ -30,11 +30,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 for v in ENVIRONMENT PROJECT_ID ORG REPO; do
-  if [[ -z "${!v}" ]]; then echo "ERROR: --${v,,} is required" >&2; exit 1; fi
+  if [[ -z "${!v}" ]]; then echo "ERROR: --$(echo "$v" | tr '[:upper:]' '[:lower:]') is required" >&2; exit 1; fi
 done
 case "$ENVIRONMENT" in dev|sit|prod) ;; *) echo "ERROR: --env must be dev|sit|prod" >&2; exit 1 ;; esac
 
-ENVIRONMENT="${ENVIRONMENT,,}"
+ENVIRONMENT="$(echo "$ENVIRONMENT" | tr '[:upper:]' '[:lower:]')"
 TF_STATE_BUCKET="${PROJECT_ID}-gcs-tfstate-${ENVIRONMENT}"
 SA_NAME="data-tf-sa-${ENVIRONMENT}"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
