@@ -1,14 +1,16 @@
 name: Infra Build
 
-# Builds backend + frontend images then applies Terraform.
+# Three-phase deploy:
+#   1. provision  — terraform apply scoped to project-setup (creates Artifact Registry)
+#   2. build      — docker build + push (registry now exists)
+#   3. deploy     — terraform apply (full, deploys Cloud Run services with new images)
+#
 # PAIRED with full_deploy.yml — any Terraform variable added here MUST also be
 # added to full_deploy.yml (conventions rule 7).
 #
-# First-time setup note: on the very first run, BACKEND_URL will be empty and the
-# frontend image will be built without NEXT_PUBLIC_API_BASE. After the first deploy:
-#   1. Get the backend URL from Terraform output or the Cloud Run console.
-#   2. Add it as BACKEND_URL in the GitHub Environment variables.
-#   3. Re-run this workflow to rebuild the frontend image with the correct API base.
+# First-time note: BACKEND_URL will be empty on first run; frontend builds without
+# NEXT_PUBLIC_API_BASE. After first deploy, set BACKEND_URL as a GitHub Environment
+# var and re-run.
 
 on:
   workflow_dispatch:
@@ -26,8 +28,53 @@ on:
         type: string
 
 jobs:
+  provision:
+    name: Provision registry
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENV: ${{ inputs.environment }}
+      PROJECT_ID: ${{ vars.PROJECT_ID }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+      REGION: ${{ vars.REGION }}
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        id: auth
+        uses: ./.github/actions/gcp-auth
+        with:
+          env: ${{ env.ENV }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ steps.auth.outputs.state_bucket }}" \
+            -backend-config="prefix=terraform/lineage-agents-state"
+
+      - name: Terraform Apply (project-setup only)
+        working-directory: terraform
+        run: |
+          terraform apply -auto-approve \
+            -target=module.project_setup \
+            -var="project_id=${{ vars.PROJECT_ID }}" \
+            -var="project_number=${{ vars.PROJECT_NUMBER }}" \
+            -var="region=${{ vars.REGION }}" \
+            -var="env=${{ env.ENV }}" \
+            -var="image_tag=${{ env.IMAGE_TAG }}" \
+            -var="backend_url=${{ vars.BACKEND_URL }}"
+
   build-backend:
     name: Build backend
+    needs: provision
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
@@ -63,6 +110,7 @@ jobs:
 
   build-frontend:
     name: Build frontend
+    needs: provision
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
@@ -98,7 +146,7 @@ jobs:
           docker push ${{ steps.auth.outputs.registry }}/frontend:latest
 
   deploy:
-    name: Terraform Apply
+    name: Terraform Apply (full)
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
@@ -130,7 +178,7 @@ jobs:
             -backend-config="bucket=${{ steps.auth.outputs.state_bucket }}" \
             -backend-config="prefix=terraform/lineage-agents-state"
 
-      - name: Terraform Apply
+      - name: Terraform Apply (full)
         working-directory: terraform
         run: |
           terraform apply -auto-approve \
@@ -140,7 +188,6 @@ jobs:
             -var="env=${{ env.ENV }}" \
             -var="image_tag=${{ env.IMAGE_TAG }}" \
             -var="backend_url=${{ vars.BACKEND_URL }}"
-            # Pass additional NON-SECRET vars here. Never pass a secret value — rule 5.
 
       - name: Print service URLs
         working-directory: terraform
