@@ -4,6 +4,7 @@ variable "env" { type = string }
 variable "registry_url" { type = string }
 variable "image_tag" { type = string }
 variable "results_bucket" { type = string }
+variable "demo_bucket" { type = string }
 
 variable "frontend_url" {
   type        = string
@@ -50,6 +51,12 @@ resource "google_project_iam_member" "bq_job_user" {
 resource "google_storage_bucket_iam_member" "results_admin" {
   bucket = var.results_bucket
   role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_storage_bucket_iam_member" "demo_reader" {
+  bucket = var.demo_bucket
+  role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.backend.email}"
 }
 

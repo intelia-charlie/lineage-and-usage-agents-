@@ -18,6 +18,7 @@ module "backend" {
   registry_url   = local.registry_url
   image_tag      = var.image_tag
   results_bucket = module.project_setup.results_bucket_name
+  demo_bucket    = module.project_setup.demo_bucket_name
   frontend_url   = var.frontend_url
 
   depends_on = [module.project_setup]
