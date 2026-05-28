@@ -87,7 +87,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
       env {
         name  = "APP_CORS_ORIGINS"
-        value = "http://localhost:3000,http://localhost:3001,${var.frontend_url}"
+        value = jsonencode(compact(["http://localhost:3000", "http://localhost:3001", var.frontend_url]))
       }
       env {
         name  = "APP_GCP_PROJECT"
